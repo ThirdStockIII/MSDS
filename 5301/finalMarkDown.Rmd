@@ -103,7 +103,7 @@ modelNYPD %>%
     labels = month.name) + 
   theme(axis.text.x = element_text(angle = 50, vjust = 1, hjust = 1, size = 12)) +
   geom_point() +
-  geom_smooth(color = "#CFB87c", linewidth = 2) +
+  geom_smooth(color = "#CFB87c", linewidth = 2, method = 'loess', formula = 'y ~ x') +
   labs(title = "Shootings Incidents by Month",
        subtitle = "(2006 - 2023)",
        y = "Total Number of Shootings",
