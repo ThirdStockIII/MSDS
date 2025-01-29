@@ -6,7 +6,7 @@ output:
   pdf_document: default
 ---
 
-```{r}
+```{r, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(lubridate)
@@ -14,7 +14,7 @@ library(ggplot2)
 
 ```
 
-```{r}
+```{r, include=FALSE}
 url_NYPD <- "https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD"
 
 NYPD <- read.csv(url_NYPD)
@@ -27,7 +27,7 @@ The City of New York has done a great job maintaining a dataset of every shootin
 
 The first visualization is comparing the different Boroughs in New York by the number of shootings that occur there. To make the data more interesting, I included information on how frequently the incident resulted in the murder of the victim.
 
-```{r}
+```{r, include=FALSE}
 cleanNYPD <- NYPD %>%
   select(c("OCCUR_DATE","OCCUR_TIME","BORO","STATISTICAL_MURDER_FLAG",
            "PERP_SEX","PERP_RACE","VIC_SEX","VIC_RACE")) %>%
@@ -39,7 +39,9 @@ cleanNYPD <- NYPD %>%
          Day = day(OCCUR_DATE),
          Hour = hour(OCCUR_TIME),
          Shootings = 1)
+```
 
+```{r}
 cleanNYPD %>%
   ggplot(aes(x = BORO, fill = Murdered)) +
   geom_bar() +
@@ -57,7 +59,7 @@ cleanNYPD %>%
 
 I was very interested in seeing the distribution of data by race and how that trend has evolved through the years. To make the data cleaner, I removed the rows of data where the perpetrator's race wasn't listed. That was either saved in the dataset as 'UNKNOWN', '(null)', or just left as a blank cell. Once those rows of data were removed, the rest of the visualization had a much cleaner look.
 
-```{r}
+```{r, include=FALSE}
 cleanNYPD2 <- cleanNYPD %>%
   group_by(Year, Shootings,PERP_RACE) %>%
   filter(!(PERP_RACE == "UNKNOWN"),
@@ -66,8 +68,9 @@ cleanNYPD2 <- cleanNYPD %>%
   summarize(Shootings = sum(Shootings)) %>%
   select(Year,Shootings,PERP_RACE) %>%
   ungroup()
+```
 
-
+```{r}
 cleanNYPD2 %>%
   ggplot(aes(x = Year, y = Shootings,color = PERP_RACE)) +
   geom_line() +
@@ -84,13 +87,15 @@ cleanNYPD2 %>%
 
 When looking up different models that I could do, I discovered the Local Regression model which introduces a curved fit to the model. I thought this type of model would be perfect to analyze the data for shooting incidents by month since you wouldn't want a straight line going through that. The gray outline is the standard error. To explain further, this line would be the prediction for what how many shootings are expected per month and the black dot is how many actually occurred during the 17 year period.
 
-```{r}
+```{r, include=FALSE}
 modelNYPD <- cleanNYPD %>%
   group_by(Month, Shootings) %>%
   select(Month,Shootings) %>%
   summarize(Shootings = sum(Shootings)) %>%
   ungroup()
-  
+```
+
+```{r}  
 modelNYPD %>%
   ggplot(aes(x = Month, y=Shootings)) +
   scale_x_continuous(
@@ -98,7 +103,7 @@ modelNYPD %>%
     labels = month.name) + 
   theme(axis.text.x = element_text(angle = 50, vjust = 1, hjust = 1, size = 12)) +
   geom_point() +
-  geom_smooth(color = "#CFB87c", size = 2) +
+  geom_smooth(color = "#CFB87c", linewidth = 2) +
   labs(title = "Shootings Incidents by Month",
        subtitle = "(2006 - 2023)",
        y = "Total Number of Shootings",
