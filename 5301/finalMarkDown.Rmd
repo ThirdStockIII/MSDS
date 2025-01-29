@@ -1,0 +1,115 @@
+---
+title: "NYPD Shooting Incident Project"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+
+```
+
+```{r}
+url_NYPD <- "https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD"
+
+NYPD <- read.csv(url_NYPD)
+
+```
+## Purpose:
+The City of New York has done a great job maintaining a dataset of every shooting incident that occurred in NYC going back to 2006. The data includes information on the locations and times of the shootings and some demographic information on both the offenders and the victims. Using this data, I wanted to investigate the number of shootings that different boroughs have, to see what data was collected based on the race of the offender, and to see what a predictive model for shootings would be over the course of a year.
+
+## Figure 1:
+
+The first visualization is comparing the different Boroughs in New York by the number of shootings that occur there. To make the data more interesting, I included information on how frequently the incident resulted in the murder of the victim.
+
+```{r}
+cleanNYPD <- NYPD %>%
+  select(c("OCCUR_DATE","OCCUR_TIME","BORO","STATISTICAL_MURDER_FLAG",
+           "PERP_SEX","PERP_RACE","VIC_SEX","VIC_RACE")) %>%
+  mutate(OCCUR_DATE = mdy(OCCUR_DATE),
+         OCCUR_TIME = hms(OCCUR_TIME),
+         Murdered = as.logical(STATISTICAL_MURDER_FLAG),
+         Year = year(OCCUR_DATE),
+         Month = month(OCCUR_DATE),
+         Day = day(OCCUR_DATE),
+         Hour = hour(OCCUR_TIME),
+         Shootings = 1)
+
+cleanNYPD %>%
+  ggplot(aes(x = BORO, fill = Murdered)) +
+  geom_bar() +
+  labs(title = "Shootings Incidents by Borough",
+       subtitle = "(2006 - 2023)",
+       x = "NYC Boroughs",
+       y = "Total Number of Shootings",
+       caption = "(Fig. 1)")  +
+  scale_fill_manual(values = c("TRUE" = "#000000", "FALSE" = "#CFB87c"),
+                    name = "Did Victim Survive?",
+                    labels = c("Yes","No"))
+```
+
+## Figure 2:
+
+I was very interested in seeing the distribution of data by race and how that trend has evolved through the years. To make the data cleaner, I removed the rows of data where the perpetrator's race wasn't listed. That was either saved in the dataset as 'UNKNOWN', '(null)', or just left as a blank cell. Once those rows of data were removed, the rest of the visualization had a much cleaner look.
+
+```{r}
+cleanNYPD2 <- cleanNYPD %>%
+  group_by(Year, Shootings,PERP_RACE) %>%
+  filter(!(PERP_RACE == "UNKNOWN"),
+         !(PERP_RACE =="(null)"),
+         !(PERP_RACE == "")) %>%
+  summarize(Shootings = sum(Shootings)) %>%
+  select(Year,Shootings,PERP_RACE) %>%
+  ungroup()
+
+
+cleanNYPD2 %>%
+  ggplot(aes(x = Year, y = Shootings,color = PERP_RACE)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Shootings Incidents by Race",
+       subtitle = "(2006 - 2023)",
+       x = "Year",
+       y = "Total Number of Shootings",
+       caption = "(Fig. 2)",
+       color = "Offender Race")
+```
+
+## Model 1:
+
+When looking up different models that I could do, I discovered the Local Regression model which introduces a curved fit to the model. I thought this type of model would be perfect to analyze the data for shooting incidents by month since you wouldn't want a straight line going through that. The gray outline is the standard error. To explain further, this line would be the prediction for what how many shootings are expected per month and the black dot is how many actually occurred during the 17 year period.
+
+```{r}
+modelNYPD <- cleanNYPD %>%
+  group_by(Month, Shootings) %>%
+  select(Month,Shootings) %>%
+  summarize(Shootings = sum(Shootings)) %>%
+  ungroup()
+  
+modelNYPD %>%
+  ggplot(aes(x = Month, y=Shootings)) +
+  scale_x_continuous(
+    breaks = seq_along(month.name), 
+    labels = month.name) + 
+  theme(axis.text.x = element_text(angle = 50, vjust = 1, hjust = 1, size = 12)) +
+  geom_point() +
+  geom_smooth(color = "#CFB87c", size = 2) +
+  labs(title = "Shootings Incidents by Month",
+       subtitle = "(2006 - 2023)",
+       y = "Total Number of Shootings",
+       caption = "(Model 1)")
+```
+
+## Conclusion and Biases:
+Figure 2 was very interesting to see that there was quite a drop shootings for all races from 2006-2019. Seeing a large spike in 2020 is surprising to me because I would have thought that 2020 would have seen a significant drop in shootings because of the pandemic. 
+
+There are a couple things that I want to mention for the data I am presenting. First, it is important to note that for Figure 2, there were rows of data that were removed. I know that isn't the best practice when it comes to cleaning data, but I was interested in seeing data based on race and missing cells was defeating the purpose, so it felt alright to remove those pieces of data entirely. 
+
+I am also not trying to present some racial conclusion based on my visualizations. There are a lot of factors if someone is trying to ask "Why is the data distributed that way?" that I cannot answer. It would be interesting to explore this topic deeper, but with that data that was included in this dataset, I could only present it in this way.
+
+To slightly expand on the topic of "Why?", it is known that there is a lot of bias that people have. Police are known to be harder on specific demographics and that can be a possible explanation to why some data is trending in certain ways. 
